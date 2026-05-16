@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>福祉用具 価格検索</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f7f8fa; --surface: #ffffff; --border: #e4e6ea; --border-hover: #c8ccd4;
+      --text-primary: #1a1d23; --text-secondary: #5a6070; --text-muted: #9099aa;
+      --accent: #2563eb; --accent-light: #eff4ff; --accent-border: #bfcfff;
+      --highlight-bg: #fef9c3; --highlight-text: #713f12;
+      --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+    }
+    body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; padding: 32px 20px 60px; }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { margin-bottom: 28px; }
+    .header-badge { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-light); border: 1px solid var(--accent-border); color: var(--accent); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; letter-spacing: 0.04em; margin-bottom: 10px; }
+    h1 { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 5px; }
+    .header-sub { font-size: 13px; color: var(--text-secondary); }
+    .search-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .search-label { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+    .keyword-wrap { position: relative; margin-bottom: 14px; }
+    .keyword-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; pointer-events: none; }
+    #keyword-input { width: 100%; height: 44px; padding: 0 40px 0 38px; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-primary); font-size: 14px; font-family: inherit; transition: border-color 0.15s; }
+    #keyword-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    #keyword-input::placeholder { color: var(--text-muted); }
+    .keyword-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 18px; padding: 4px; display: none; line-height: 1; }
+    .keyword-clear:hover { color: var(--text-secondary); }
+    .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 500px) { .filter-row { grid-template-columns: 1fr; } }
+    .filter-group label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 5px; }
+    select { width: 100%; height: 38px; padding: 0 32px 0 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); appearance: none; color: var(--text-primary); font-size: 13px; font-family: inherit; cursor: pointer; transition: border-color 0.15s; }
+    select:focus { outline: none; border-color: var(--accent); }
+    .action-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .result-count { font-size: 13px; color: var(--text-secondary); }
+    .result-count strong { color: var(--text-primary); font-weight: 700; }
+    .reset-btn { display: flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 99px; background: transparent; color: var(--text-secondary); font-size: 12px; font-family: inherit; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .reset-btn:hover { background: var(--bg); border-color: var(--border-hover); }
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    thead tr { background: #f0f2f5; }
+    th { padding: 10px 14px; font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: left; border-bottom: 1px solid var(--border); letter-spacing: 0.04em; white-space: nowrap; }
+    th.price-col { text-align: right; }
+    td { padding: 10px 14px; font-size: 13px; color: var(--text-primary); border-bottom: 1px solid var(--border); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f8faff; }
+    .td-price { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+    .td-price-avg { color: var(--accent); }
+    .tais-link { color: var(--accent); text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 3px; }
+    .tais-link:hover { text-decoration: underline; }
+    mark { background: var(--highlight-bg); color: var(--highlight-text); border-radius: 2px; padding: 0 1px; font-style: normal; }
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 14px; border-top: 1px solid var(--border); }
+    .pg-btn { min-width: 32px; height: 32px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-secondary); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.1s; }
+    .pg-btn:hover:not(:disabled) { background: var(--accent-light); border-color: var(--accent-border); color: var(--accent); }
+    .pg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+    .pg-btn:disabled { opacity: 0.35; cursor: default; }
+    .pg-dots { font-size: 13px; color: var(--text-muted); padding: 0 4px; }
+    .state-msg { padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 14px; line-height: 1.8; }
+    .debug-box { margin: 16px; padding: 12px; background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; font-size: 12px; color: #5a4000; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+    .footer { margin-top: 24px; font-size: 11px; color: var(--text-muted); text-align: center; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-badge">🏥 厚生労働省 公表データ</div>
+    <h1>福祉用具 価格検索ツール</h1>
+    <p class="header-sub" id="header-sub">データを読み込み中…</p>
+  </div>
+  <div class="search-card">
+    <div class="search-label">キーワード検索</div>
+    <div class="keyword-wrap">
+      <span class="keyword-icon">🔍</span>
+      <input type="text" id="keyword-input" placeholder="商品名・メーカー・型番・TAISコードで検索…" oninput="onKeyword(this.value)" autocomplete="off" spellcheck="false">
+      <button class="keyword-clear" id="kw-clear" onclick="clearKeyword()">×</button>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>① メーカーで絞り込む</label>
+        <select id="maker-select" onchange="onMakerChange()">
+          <option value="">すべてのメーカー</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>② 商品名で絞り込む</label>
+        <select id="product-select" onchange="onProductChange()">
+          <option value="">すべての商品</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="action-bar">
+    <div class="result-count" id="result-count"></div>
+    <button class="reset-btn" onclick="onReset()">✕ リセット</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:20%">メーカー</th>
+            <th style="width:28%">商品名</th>
+            <th style="width:13%">TAISコード</th>
+            <th style="width:12%">型番</th>
+            <th class="price-col" style="width:14%">全国平均貸与価格</th>
+            <th class="price-col" style="width:13%">貸与価格の上限</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="state-area"></div>
+    <div class="pagination" id="pagination" style="display:none"></div>
+  </div>
+  <div class="footer">出典：厚生労働省「全国平均貸与価格及び貸与価格の上限の公表」 ／ TAISリンク先：公益財団法人テクノエイド協会</div>
+</div>
+
+<script>
+// =====================================================
+// 列名の自動マッピング
+// CSVの1行目を読み取り、どの列が何かを自動判定する
+// =====================================================
+
+const FIELD_PATTERNS = {
+  maker:    [/メーカー/,  /法人/,          /maker/i,        /manufacturer/i, /会社/],
+  name:     [/商品名/,    /製品名/,         /product/i,      /name/i],
+  tais:     [/tais/i,    /タイス/,         /コード/],
+  model:    [/型番/,      /model/i,        /品番/,          /型式/],
+  avgPrice: [/平均.*価格/, /全国.*平均/,    /avg/i,          /average/i],
+  maxPrice: [/上限/,      /最高.*価格/,    /max/i,          /ceiling/i],
+};
+
+let colMap = {}; // { maker: 0, name: 1, ... } — 列インデックス
+let allData = [];
+let filtered = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let keyword = "";
+let selMaker = "";
+let selProduct = "";
+
+function detectColumns(headers) {
+  const map = {};
+  headers.forEach((h, i) => {
+    const hn = (h || "").trim();
+    for (const [field, patterns] of Object.entries(FIELD_PATTERNS)) {
+      if (map[field] !== undefined) continue;
+      for (const p of patterns) {
+        if (p.test(hn)) { map[field] = i; break; }
+      }
+    }
+  });
+  return map;
+}
+
+// Shift-JIS対応CSVパーサー
+async function loadCSV() {
+  showState("データを読み込み中…");
+
+  // まずUTF-8で試みる
+  let text = null;
+  let encoding = "utf-8";
+  try {
+    const res = await fetch("data.csv");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const buf = await res.arrayBuffer();
+
+    // BOMチェック
+    const bytes = new Uint8Array(buf);
+    const hasBom = (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF);
+
+    // まずUTF-8で試す
+    text = new TextDecoder("utf-8").decode(buf);
+
+    // 文字化け検出（置換文字 U+FFFD が多い場合はShift-JIS）
+    if ((text.match(/\uFFFD/g) || []).length > 10) {
+      text = new TextDecoder("shift-jis").decode(buf);
+      encoding = "shift-jis";
+    }
+  } catch(e) {
+    showState("⚠️ data.csv の読み込みに失敗しました。<br>index.html と同じフォルダに data.csv があるか確認してください。<br><small>エラー詳細: " + e.message + "</small>");
+    return;
+  }
+
+  const rows = text.trim().split(/\r?\n/);
+  if (rows.length < 2) { showState("⚠️ CSVにデータが見つかりませんでした。"); return; }
+
+  const headers = parseRow(rows[0]);
+  colMap = detectColumns(headers);
+
+  // 列マッピングが取れなかった場合のフォールバック（列番号で推測）
+  if (Object.keys(colMap).length < 3) {
+    // 列数から推測：厚労省フォーマットは通常 [TAIS, 商品名, 型番, メーカー, 平均価格, 上限価格]
+    if (headers.length >= 5) {
+      colMap = { tais:0, name:1, model:2, maker:3, avgPrice:4, maxPrice:5 };
+    } else {
+      showState(`⚠️ CSVのカラムを認識できませんでした。<br>1行目: <code>${headers.slice(0,8).join(" | ")}</code>`);
+      return;
+    }
+  }
+
+  allData = rows.slice(1).map(r => parseRow(r)).filter(r => r.some(v => v));
+
+  const totalCount = allData.length.toLocaleString();
+  document.getElementById("header-sub").textContent =
+    `全国平均貸与価格・貸与価格の上限 — 全${totalCount}件収録（${encoding}）`;
+
+  buildMakerSelect();
+  buildProductSelect("");
+  applyFilters();
+}
+
+function parseRow(row) {
+  const result = []; let cur = ""; let q = false;
+  for (let i = 0; i < row.length; i++) {
+    const c = row[i];
+    if (c === '"') { q = !q; }
+    else if (c === ',' && !q) { result.push(cur.trim()); cur = ""; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// フィールド取得
+function g(row, field) {
+  const idx = colMap[field];
+  if (idx === undefined) return "";
+  return (row[idx] || "").replace(/^"|"$/g, "").trim();
+}
+
+// セレクト構築
+function buildMakerSelect() {
+  const makers = [...new Set(allData.map(r => g(r,"maker")))].filter(Boolean).sort((a,b)=>a.localeCompare(b,"ja"));
+  const sel = document.getElementById("maker-select");
+  sel.innerHTML = '<option value="">すべてのメーカー</option>';
+  makers.forEach(m => { const o = document.createElement("option"); o.value=m; o.textContent=m; sel.appendChild(o); });
+}
+
+function buildProductSelect(makerFilter) {
+  const src = makerFilter ? allData.filter(r => g(r,"maker")===makerFilter) : allData;
+  const products = [...new Set(src.map(r => g(r,"name")))].filter(Boolean).sort((a,b)=>a.localeCompare(b,"ja"));
+  const sel = document.getElementById("product-select");
+  sel.innerHTML = '<option value="">すべての商品</option>';
+  products.forEach(p => { const o = document.createElement("option"); o.value=p; o.textContent=p; sel.appendChild(o); });
+}
+
+// イベント
+function onKeyword(val) {
+  keyword = val;
+  document.getElementById("kw-clear").style.display = val ? "block" : "none";
+  currentPage = 1; applyFilters();
+}
+function clearKeyword() { document.getElementById("keyword-input").value=""; onKeyword(""); }
+function onMakerChange() {
+  selMaker = document.getElementById("maker-select").value;
+  selProduct = ""; document.getElementById("product-select").value="";
+  buildProductSelect(selMaker); currentPage=1; applyFilters();
+}
+function onProductChange() { selProduct=document.getElementById("product-select").value; currentPage=1; applyFilters(); }
+function onReset() {
+  document.getElementById("keyword-input").value="";
+  document.getElementById("maker-select").value="";
+  document.getElementById("product-select").value="";
+  document.getElementById("kw-clear").style.display="none";
+  keyword=""; selMaker=""; selProduct="";
+  buildProductSelect(""); currentPage=1; applyFilters();
+}
+
+// フィルタ
+function applyFilters() {
+  const kw = keyword.toLowerCase();
+  filtered = allData.filter(r => {
+    if (selMaker && g(r,"maker") !== selMaker) return false;
+    if (selProduct && g(r,"name") !== selProduct) return false;
+    if (kw) {
+      const hay = [g(r,"maker"),g(r,"name"),g(r,"tais"),g(r,"model")].join(" ").toLowerCase();
+      return hay.includes(kw);
+    }
+    return true;
+  });
+  document.getElementById("result-count").innerHTML =
+    (keyword||selMaker||selProduct)
+      ? `<strong>${filtered.length.toLocaleString()}</strong> 件が該当`
+      : `全 <strong>${filtered.length.toLocaleString()}</strong> 件`;
+  renderTable(); renderPagination();
+}
+
+// テーブル描画
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function hl(text,kw){
+  if(!kw||!text) return esc(text);
+  const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),"gi");
+  return esc(text).replace(re,m=>`<mark>${m}</mark>`);
+}
+function fmtPrice(v){
+  if(!v) return '<span style="color:var(--text-muted)">—</span>';
+  const n = parseInt(v.replace(/[^0-9]/g,""));
+  if(isNaN(n)) return esc(v);
+  return "¥"+n.toLocaleString();
+}
+
+function renderTable(){
+  const tbody=document.getElementById("tbody");
+  const state=document.getElementById("state-area");
+  const pg=document.getElementById("pagination");
+  const kw=keyword.toLowerCase();
+  if(filtered.length===0){
+    tbody.innerHTML=""; pg.style.display="none";
+    showState("🔍 条件に一致する商品が見つかりませんでした。<br>キーワードや絞り込み条件を変えてみてください。");
+    return;
+  }
+  state.innerHTML="";
+  const start=(currentPage-1)*PAGE_SIZE;
+  const page=filtered.slice(start,start+PAGE_SIZE);
+  tbody.innerHTML = page.map(r=>{
+    const tais=g(r,"tais");
+    const taisCell=tais
+      ?`<a class="tais-link" href="https://www.techno-aids.or.jp/robot/search_detail?TAIS_CODE=${encodeURIComponent(tais)}" target="_blank" rel="noopener">${hl(tais,kw)} ↗</a>`
+      :`<span style="color:var(--text-muted)">—</span>`;
+    return `<tr>
+      <td title="${esc(g(r,'maker'))}">${hl(g(r,'maker'),kw)}</td>
+      <td title="${esc(g(r,'name'))}">${hl(g(r,'name'),kw)}</td>
+      <td>${taisCell}</td>
+      <td title="${esc(g(r,'model'))}">${hl(g(r,'model'),kw)}</td>
+      <td class="td-price td-price-avg">${fmtPrice(g(r,'avgPrice'))}</td>
+      <td class="td-price">${fmtPrice(g(r,'maxPrice'))}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderPagination(){
+  const total=Math.ceil(filtered.length/PAGE_SIZE);
+  const pg=document.getElementById("pagination");
+  if(total<=1){pg.style.display="none";return;}
+  pg.style.display="flex";
+  const pages=[];
+  for(let i=1;i<=total;i++){if(i===1||i===total||Math.abs(i-currentPage)<=2)pages.push(i);}
+  let html=`<button class="pg-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?"disabled":""}>‹ 前へ</button>`;
+  let prev=null;
+  for(const i of pages){
+    if(prev&&i-prev>1) html+=`<span class="pg-dots">…</span>`;
+    html+=`<button class="pg-btn${i===currentPage?" active":""}" onclick="goPage(${i})">${i}</button>`;
+    prev=i;
+  }
+  html+=`<button class="pg-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?"disabled":""}>次へ ›</button>`;
+  pg.innerHTML=html;
+}
+
+function goPage(n){
+  const total=Math.ceil(filtered.length/PAGE_SIZE);
+  if(n<1||n>total)return;
+  currentPage=n; renderTable(); renderPagination();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function showState(msg){
+  document.getElementById("state-area").innerHTML=`<div class="state-msg">${msg}</div>`;
+  document.getElementById("tbody").innerHTML="";
+  document.getElementById("pagination").style.display="none";
+}
+
+loadCSV();
+</script>
+</body>
+</html>
